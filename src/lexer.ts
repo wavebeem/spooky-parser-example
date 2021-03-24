@@ -113,6 +113,9 @@ const rules: LexerRule[] = [
   {
     pattern: /.*/,
     callback: ({ start }) => {
+      // TODO: It shoulbe possible to recover from an unexpected character and
+      // resume parsing somewhere else... perhaps we could skip the current
+      // line? Hard to say. Maybe I'll think about this later.
       throw new Error(
         `lex failure: line ${start.line}, column ${start.column}`
       );
