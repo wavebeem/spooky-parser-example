@@ -1,35 +1,24 @@
-// foo = {
-//   x = 1
-//   y = 2
-//   name = "Brian"
-//   itsTrue = true
-//   its_false = false
-//   an_array_for_you = [1 2 3 "hello" {}]
-// }
-
 export interface Position {
   index: number;
   line: number;
   column: number;
 }
 
-export interface BaseToken<T> {
-  type: T;
+export interface Token {
+  type:
+    | "Identifier"
+    | "Number"
+    | "String"
+    | "ObjectStart"
+    | "ObjectEnd"
+    | "ArrayStart"
+    | "ArrayEnd"
+    | "PropertyAssign";
   comment: string;
   text: string;
   start: Position;
   end: Position;
 }
-
-export type Token =
-  | BaseToken<"Identifier">
-  | BaseToken<"Number">
-  | BaseToken<"String">
-  | BaseToken<"ObjectStart">
-  | BaseToken<"ObjectEnd">
-  | BaseToken<"ArrayStart">
-  | BaseToken<"ArrayEnd">
-  | BaseToken<"PropertyAssign">;
 
 function advanceByText(pos: Position, text: string): Position {
   let { index, line, column } = pos;
@@ -60,39 +49,6 @@ interface LexerRule {
     start: Position;
     end: Position;
   }) => void;
-}
-
-class Lexer {
-  constructor(public rules: LexerRule[]) {}
-
-  lex(code: string): Token[] {
-    let start: Position = { index: 0, line: 1, column: 1 };
-    let end = start;
-    let comments: string[] = [];
-    const tokens: Token[] = [];
-    const token = (type: Token["type"], text: string) => {
-      const comment = comments.join("\n");
-      comments = [];
-      tokens.push({ type, text, start, end, comment });
-    };
-    const comment = (text: string) => {
-      comments.push(text);
-    };
-    while (start.index < code.length) {
-      for (const { pattern, callback } of this.rules) {
-        const re = new RegExp(pattern, pattern.flags + "y");
-        re.lastIndex = start.index;
-        const match = code.match(re);
-        if (match) {
-          end = advanceByText(start, match[0]);
-          callback({ token, comment, match, start, end });
-          start = end;
-          break;
-        }
-      }
-    }
-    return tokens;
-  }
 }
 
 const rules: LexerRule[] = [
@@ -165,5 +121,30 @@ const rules: LexerRule[] = [
 ];
 
 export function lex(code: string): Token[] {
-  return new Lexer(rules).lex(code);
+  let start: Position = { index: 0, line: 1, column: 1 };
+  let end = start;
+  let comments: string[] = [];
+  const tokens: Token[] = [];
+  const token = (type: Token["type"], text: string) => {
+    const comment = comments.join("\n");
+    comments = [];
+    tokens.push({ type, text, start, end, comment });
+  };
+  const comment = (text: string) => {
+    comments.push(text);
+  };
+  while (start.index < code.length) {
+    for (const { pattern, callback } of rules) {
+      const re = new RegExp(pattern, pattern.flags + "y");
+      re.lastIndex = start.index;
+      const match = code.match(re);
+      if (match) {
+        end = advanceByText(start, match[0]);
+        callback({ token, comment, match, start, end });
+        start = end;
+        break;
+      }
+    }
+  }
+  return tokens;
 }
