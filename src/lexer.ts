@@ -31,86 +31,139 @@ export type Token =
   | BaseToken<"ArrayEnd">
   | BaseToken<"PropertyAssign">;
 
-function matchAt(text: string, index: number, regexp: RegExp): string {
-  const re = new RegExp(regexp, regexp.flags + "y");
-  re.lastIndex = index;
-  return text.match(re)?.[0] ?? "";
-}
-
 function advanceByText(pos: Position, text: string): Position {
-  const ret = { ...pos };
+  let { index, line, column } = pos;
   for (const ch of text) {
     if (ch === "\n") {
-      ret.line++;
-      ret.column = 1;
+      line++;
+      column = 1;
     } else {
-      ret.column++;
+      column++;
     }
   }
-  ret.index += text.length;
-  return ret;
+  index += text.length;
+  return { index, line, column };
 }
 
-function* ilex(code: string): Generator<Token> {
-  let start: Position = { index: 0, line: 1, column: 1 };
-  let end = start;
-  let comments: string[] = [];
-  let text = "";
-  while (start.index < code.length) {
-    text = "";
-    if ((text = matchAt(code, start.index, /\s+/))) {
-      start = advanceByText(start, text);
-      continue;
+interface LexerRule {
+  pattern: RegExp;
+  callback: ({
+    token,
+    comment,
+    match,
+    start,
+    end,
+  }: {
+    token: (type: Token["type"], text: string) => void;
+    comment: (text: string) => void;
+    match: RegExpMatchArray;
+    start: Position;
+    end: Position;
+  }) => void;
+}
+
+class Lexer {
+  constructor(public rules: LexerRule[]) {}
+
+  lex(code: string): Token[] {
+    let start: Position = { index: 0, line: 1, column: 1 };
+    let end = start;
+    let comments: string[] = [];
+    const tokens: Token[] = [];
+    const token = (type: Token["type"], text: string) => {
+      const comment = comments.join("\n");
+      comments = [];
+      tokens.push({ type, text, start, end, comment });
+    };
+    const comment = (text: string) => {
+      comments.push(text);
+    };
+    while (start.index < code.length) {
+      for (const { pattern, callback } of this.rules) {
+        const re = new RegExp(pattern, pattern.flags + "y");
+        re.lastIndex = start.index;
+        const match = code.match(re);
+        if (match) {
+          end = advanceByText(start, match[0]);
+          callback({ token, comment, match, start, end });
+          start = end;
+          break;
+        }
+      }
     }
-    if ((text = matchAt(code, start.index, /#.*\n/))) {
-      start = advanceByText(start, text);
-      comments.push(text.slice(1, -1));
-      continue;
-    }
-    const comment = comments.join("\n");
-    if ((text = matchAt(code, start.index, /[a-z_]+/i))) {
-      end = advanceByText(start, text);
-      yield { type: "Identifier", comment, text, start, end };
-    } else if ((text = matchAt(code, start.index, /[0-9]+/))) {
-      end = advanceByText(start, text);
-      yield { type: "Number", comment, text, start, end };
-    } else if ((text = matchAt(code, start.index, /"(?:[^"]|\\")*"/))) {
-      end = advanceByText(start, text);
-      yield {
-        type: "String",
-        comment,
-        text: text.slice(1, -1),
-        start,
-        end,
-      };
-    } else if ((text = matchAt(code, start.index, /\{/))) {
-      end = advanceByText(start, text);
-      yield { type: "ObjectStart", comment, text, start, end };
-    } else if ((text = matchAt(code, start.index, /\}/))) {
-      end = advanceByText(start, text);
-      yield { type: "ObjectStart", comment, text, start, end };
-    } else if ((text = matchAt(code, start.index, /\[/))) {
-      end = advanceByText(start, text);
-      yield { type: "ArrayStart", comment, text, start, end };
-    } else if ((text = matchAt(code, start.index, /\]/))) {
-      end = advanceByText(start, text);
-      yield { type: "ArrayEnd", comment, text, start, end };
-    } else if ((text = matchAt(code, start.index, /=/))) {
-      end = advanceByText(start, text);
-      yield { type: "PropertyAssign", comment, text, start, end };
-    } else {
-      // console.log(filename);
-      // console.log(code);
-      console.log(JSON.stringify(code.slice(start.index, start.index + 10)));
-      throw new Error(
-        `parse error: line ${start.line}, column ${start.column}`
-      );
-    }
-    comments = [];
-    start = end;
+    return tokens;
   }
 }
+
+const rules: LexerRule[] = [
+  {
+    pattern: /\s+/,
+    callback: () => {},
+  },
+  {
+    pattern: /#(.*)\n+/,
+    callback: ({ comment, match }) => {
+      comment(match[1]);
+    },
+  },
+  {
+    pattern: /[0-9]+/,
+    callback: ({ token, match }) => {
+      token("Number", match[0]);
+    },
+  },
+  {
+    pattern: /\w+/,
+    callback: ({ token, match }) => {
+      token("Identifier", match[0]);
+    },
+  },
+  {
+    pattern: /"(?:[^"]|\\")*"/,
+    callback: ({ token, match }) => {
+      token("String", match[1]);
+    },
+  },
+  {
+    pattern: /\{/,
+    callback: ({ token, match }) => {
+      token("ObjectStart", match[0]);
+    },
+  },
+  {
+    pattern: /\}/,
+    callback: ({ token, match }) => {
+      token("ObjectEnd", match[0]);
+    },
+  },
+  {
+    pattern: /\[/,
+    callback: ({ token, match }) => {
+      token("ArrayStart", match[0]);
+    },
+  },
+  {
+    pattern: /\]/,
+    callback: ({ token, match }) => {
+      token("ArrayEnd", match[0]);
+    },
+  },
+  {
+    pattern: /=/,
+    callback: ({ token, match }) => {
+      token("PropertyAssign", match[0]);
+    },
+  },
+  {
+    pattern: /.*/,
+    callback: ({ start }) => {
+      throw new Error(
+        `lex failure: line ${start.line}, column ${start.column}`
+      );
+    },
+  },
+];
 
 export function lex(code: string): Token[] {
-  return Array.from(ilex(code));
+  return new Lexer(rules).lex(code);
 }

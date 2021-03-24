@@ -8,6 +8,7 @@ export type Data =
   | Data[]
   | { [key: string]: Data };
 
+// TODO
 export function toData(ast: AST): Data {
   throw new Error("not implemented");
 }
