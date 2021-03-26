@@ -1,19 +1,8 @@
 import type { Position, Token } from "./lexer";
 
-export interface BaseSkeletonTree<T, V> {
-  type: T;
-  value: V;
-  comment: string;
-  start: Position;
-  end: Position;
-}
-
 export type SkeletonTree =
-  | BaseSkeletonTree<"Identifier", string>
-  | BaseSkeletonTree<"String", string>
-  | BaseSkeletonTree<"Number", number>
-  | BaseSkeletonTree<"Object", SkeletonTree[]>
-  | BaseSkeletonTree<"Array", SkeletonTree[]>;
+  | { type: "Leaf"; token: Token }
+  | { type: "Branch"; start: Token; end: Token; items: Token[] };
 
 function getBalancedRangeLength<T>({
   data,
@@ -42,12 +31,5 @@ function getBalancedRangeLength<T>({
 }
 
 export function skeletize(tokens: Token[]): SkeletonTree {
-  const root: SkeletonTree = {
-    type: "Object",
-    value: [],
-    comment: "",
-    start: tokens[0].start,
-    end: tokens[tokens.length - 1].end,
-  };
-  return root;
+  throw new Error("uh oh");
 }
