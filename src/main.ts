@@ -21,6 +21,8 @@ foo = {
   an_array_for_you = [1 2 3 "hello" {}]
 }
 `;
+// TODO: Each step should be able to return a list of errors without crashing
+// the overall parser.
 const tokens = lex(code);
 // console.log(tokens);
 const skeleton = skeletize(tokens);
