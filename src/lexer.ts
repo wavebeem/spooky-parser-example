@@ -4,21 +4,32 @@ export interface Position {
   column: number;
 }
 
-export interface Token {
-  type:
-    | "Identifier"
-    | "Number"
-    | "String"
-    | "ObjectStart"
-    | "ObjectEnd"
-    | "ArrayStart"
-    | "ArrayEnd"
-    | "PropertyAssign";
+export interface BaseToken<T> {
+  type: T;
   comment: string;
   text: string;
   start: Position;
   end: Position;
 }
+
+export type TokenIdentifier = BaseToken<"Identifier">;
+export type TokenNumber = BaseToken<"Number">;
+export type TokenString = BaseToken<"String">;
+export type TokenObjectStart = BaseToken<"ObjectStart">;
+export type TokenObjectEnd = BaseToken<"ObjectEnd">;
+export type TokenArrayStart = BaseToken<"ArrayStart">;
+export type TokenArrayEnd = BaseToken<"ArrayEnd">;
+export type TokenPropertyAssign = BaseToken<"PropertyAssign">;
+
+export type Token =
+  | TokenIdentifier
+  | TokenNumber
+  | TokenString
+  | TokenObjectStart
+  | TokenObjectEnd
+  | TokenArrayStart
+  | TokenArrayEnd
+  | TokenPropertyAssign;
 
 function advanceByText(pos: Position, text: string): Position {
   let { index, line, column } = pos;

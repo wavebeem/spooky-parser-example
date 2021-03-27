@@ -1,4 +1,5 @@
-import type { Position, Token } from "./lexer";
+import { assertNever } from "./assertNever";
+import type { Token } from "./lexer";
 
 export type SkeletonTree =
   | { type: "Leaf"; token: Token }
@@ -63,7 +64,7 @@ function* skel(tokens: Token[]): Generator<SkeletonTree> {
         break;
       }
       default:
-        throw new Error(`skel: invalid type: ${tok.type}`);
+        assertNever(tok);
     }
   }
 }
