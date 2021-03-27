@@ -1,8 +1,12 @@
+import { inspect } from "util";
 import { lex } from "./lexer";
 import { skeletize } from "./skeleton";
 import { treeify } from "./ast";
 import { toData } from "./convert";
 
+// const code = `
+// foo = [1 2]
+// `;
 const code = `
 # Hello
 # World
@@ -18,9 +22,9 @@ foo = {
 }
 `;
 const tokens = lex(code);
-console.log(tokens);
+// console.log(tokens);
 const skeleton = skeletize(tokens);
-console.log(skeleton);
+console.log(inspect(skeleton, { depth: null, colors: true }));
 const ast = treeify(skeleton);
 console.log(ast);
 const data = toData(ast);

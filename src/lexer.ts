@@ -75,7 +75,7 @@ const rules: LexerRule[] = [
     },
   },
   {
-    pattern: /"(?:[^"]|\\")*"/,
+    pattern: /"((?:[^"]|\\")*)"/,
     callback: ({ token, match }) => {
       token("String", match[1]);
     },
